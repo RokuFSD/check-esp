@@ -13,7 +13,7 @@ const LINK = "https://www.cgeonline.com.ar/informacion/apertura-de-citas.html";
 const TELEGRAM_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const WEBHOOK_SECRET_TOKEN = Deno.env.get("WEBHOOK_SECRET_TOKEN");
 const IN_DEV = Deno.env.get("DENO_ENV") === "development";
-const WEBHOOK_URL = "";
+const WEBHOOK_URL = "emilianorui-check-esp-91.deno.dev";
 
 if (!TELEGRAM_TOKEN) {
 	throw new Error("TELEGRAM_BOT_TOKEN is not set");
