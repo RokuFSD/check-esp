@@ -117,6 +117,7 @@ async function handleUpdate(update: TelegramBot.Update) {
 			Deno.cron("Salud del bot", "*/59 * * * *", () => {
 				bot.sendMessage(chatId, "Bot corriendo sin problemas");
 			});
+			EXECUTE_ONE_PER_USER[chatId] = true;
 		}
 		bot.answerCallbackQuery(callbackQuery.id);
 	}
