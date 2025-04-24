@@ -102,8 +102,9 @@ async function handleUpdate(update: TelegramBot.Update) {
 	} else if (update.callback_query) {
 		const callbackQuery = update.callback_query;
 		const chatId = callbackQuery.message?.chat.id;
-		if (chatId && callbackQuery.data === "main") {
-			if (EXECUTE_ONE_PER_USER[chatId]) return;
+		const userId = callbackQuery.from.id;
+		if (chatId && userId && callbackQuery.data === "main") {
+			if (EXECUTE_ONE_PER_USER[userId]) return;
 			bot.sendMessage(chatId, "Se notificará cuando haya un nuevo turno.");
 			// Using Deno.cron send a message each 30 minutes
 			Deno.cron("Send status", "*/10 * * * *", async () => {
@@ -117,7 +118,7 @@ async function handleUpdate(update: TelegramBot.Update) {
 			Deno.cron("Salud del bot", "*/59 * * * *", () => {
 				bot.sendMessage(chatId, "Bot corriendo sin problemas");
 			});
-			EXECUTE_ONE_PER_USER[chatId] = true;
+			EXECUTE_ONE_PER_USER[userId] = true;
 		}
 		bot.answerCallbackQuery(callbackQuery.id);
 	}
