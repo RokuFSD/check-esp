@@ -19,7 +19,7 @@ if (!TELEGRAM_TOKEN) {
 	throw new Error("TELEGRAM_BOT_TOKEN is not set");
 }
 
-const EXECUTE_ONE_PER_USER: { [userId: number]: boolean } = {};
+const EXECUTE_ONE_PER_USER: { [userId: string]: boolean } = {};
 
 if (!WEBHOOK_SECRET_TOKEN) {
 	throw new Error("WEBHOOK_SECRET_TOKEN is not set");
@@ -102,10 +102,13 @@ async function handleUpdate(update: TelegramBot.Update) {
 	} else if (update.callback_query) {
 		const callbackQuery = update.callback_query;
 		const chatId = callbackQuery.message?.chat.id;
-		const userId = callbackQuery.from.id;
+		const userId = callbackQuery.from.username;
 		if (chatId && userId && callbackQuery.data === "main") {
 			if (EXECUTE_ONE_PER_USER[userId]) return;
-			bot.sendMessage(chatId, "Se notificará cuando haya un nuevo turno.");
+			bot.sendMessage(
+				chatId,
+				`Se notificará cuando haya un nuevo turno. ${userId}`,
+			);
 			// Using Deno.cron send a message each 30 minutes
 			Deno.cron("Send status", "*/10 * * * *", async () => {
 				const { lastDate, newDate } = await getStatus();
