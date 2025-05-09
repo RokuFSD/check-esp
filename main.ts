@@ -15,11 +15,11 @@ const WEBHOOK_SECRET_TOKEN = Deno.env.get("WEBHOOK_SECRET_TOKEN");
 const IN_DEV = Deno.env.get("DENO_ENV") === "development";
 const WEBHOOK_URL = "emilianorui-check-esp-91.deno.dev";
 
+const cachedChats: { [chatId: string]: boolean } = {};
+
 if (!TELEGRAM_TOKEN) {
 	throw new Error("TELEGRAM_BOT_TOKEN is not set");
 }
-
-const EXECUTE_ONE_PER_USER: { [userId: string]: boolean } = {};
 
 if (!WEBHOOK_SECRET_TOKEN) {
 	throw new Error("WEBHOOK_SECRET_TOKEN is not set");
@@ -75,6 +75,7 @@ function getEachChildElementText(element: Node | null) {
 }
 
 async function handleUpdate(update: TelegramBot.Update) {
+	const chatId = update.message?.chat.id;
 	if (update.message) {
 		const msg = update.message;
 		const chatId = msg.chat.id;
@@ -102,12 +103,16 @@ async function handleUpdate(update: TelegramBot.Update) {
 	} else if (update.callback_query) {
 		const callbackQuery = update.callback_query;
 		const chatId = callbackQuery.message?.chat.id;
-		const userId = callbackQuery.from.username;
-		if (chatId && userId && callbackQuery.data === "main") {
-			if (EXECUTE_ONE_PER_USER[userId]) return;
+		if (chatId && callbackQuery.data === "main") {
+			console.log(cachedChats);
+			if (chatId in cachedChats) {
+				bot.sendMessage(chatId, `Devolviendo, ya esta registrado`);
+				return;
+			}
+			cachedChats[chatId] = true;
 			bot.sendMessage(
 				chatId,
-				`Se notificará cuando haya un nuevo turno. ${userId}`,
+				`Se notificará cuando haya un nuevo turno. ${chatId}`,
 			);
 			// Using Deno.cron send a message each 30 minutes
 			Deno.cron("Send status", "*/10 * * * *", async () => {
@@ -121,7 +126,6 @@ async function handleUpdate(update: TelegramBot.Update) {
 			Deno.cron("Salud del bot", "*/59 * * * *", () => {
 				bot.sendMessage(chatId, "Bot corriendo sin problemas");
 			});
-			EXECUTE_ONE_PER_USER[userId] = true;
 		}
 		bot.answerCallbackQuery(callbackQuery.id);
 	}
