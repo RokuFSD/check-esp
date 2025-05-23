@@ -57,7 +57,7 @@ async function addToSet(value: number) {
 
 // Create the cron job once when the application starts (call this in main())
 async function startNotificationCron() {
-  Deno.cron("Send status", "*/10 * * * *", async () => {
+  Deno.cron("Send status", "*/30 * * * *", async () => {
     const activeUsers = await getSet();
 
     if (!activeUsers.size) {
@@ -69,7 +69,6 @@ async function startNotificationCron() {
 
     for (const chatId of activeUsers) {
       try {
-        bot.sendMessage(chatId, "Bot corriendo sin problemas");
         const { lastDate, newDate } = await getStatus();
         if (newDate.includes("confirmar")) continue;
 
@@ -110,6 +109,20 @@ async function handleUpdate(update: TelegramBot.Update) {
           ],
         },
       });
+    }
+    if (messageText === "/status") {
+      const activeUsers = await getSet();
+      if (activeUsers.has(chatId)) {
+        bot.sendMessage(
+          chatId,
+          "Ya estás recibiendo notificaciones.",
+        );
+      } else {
+        bot.sendMessage(
+          chatId,
+          `No estás recibiendo notificaciones. Chat ID: ${chatId}`,
+        );
+      }
     }
   } else if (update.callback_query) {
     const callbackQuery = update.callback_query;
