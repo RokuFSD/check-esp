@@ -1,12 +1,14 @@
 {
-	"tasks": {
-		"dev": "deno run --watch --allow-net --allow-env --allow-read main.ts",
-		"start": "deno run --unstable-cron --allow-net --allow-env --allow-read --env-file=.env main.ts"
-	},
-	"imports": {
-		"@std/assert": "jsr:@std/assert@1",
-		"@types/node-telegram-bot-api": "npm:@types/node-telegram-bot-api@0.64.7",
-		"node-telegram-bot-api": "npm:node-telegram-bot-api@0.66.0"
-	},
-	"unstable": ["cron"]
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-env --allow-read --env-file=.env main.ts",
+    "start": "deno run --unstable-cron --allow-net --allow-env --allow-read --env-file=.env main.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@types/node-telegram-bot-api": "npm:@types/node-telegram-bot-api@0.64.7",
+    "node-telegram-bot-api": "npm:node-telegram-bot-api@0.66.0"
+  },
+  "unstable": [
+    "cron"
+  ]
 }
