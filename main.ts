@@ -113,15 +113,13 @@ async function handleUpdate(update: TelegramBot.Update) {
         );
         // Using Deno.cron send a message each 30 minutes
         Deno.cron("Send status", "*/10 * * * *", async () => {
+          bot.sendMessage(chatId, "Bot corriendo sin problemas");
           const { lastDate, newDate } = await getStatus();
           if (newDate.includes("confirmar")) return;
           bot.sendMessage(
             chatId,
             `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
           );
-        });
-        Deno.cron("Salud del bot", "*/59 * * * *", () => {
-          bot.sendMessage(chatId, "Bot corriendo sin problemas");
         });
       }
     }
