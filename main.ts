@@ -24,6 +24,7 @@ if (!WEBHOOK_SECRET_TOKEN) {
 }
 
 const bot = new TelegramBot(TELEGRAM_TOKEN);
+const kv = await Deno.openKv();
 
 if (IN_DEV) {
   await bot.deleteWebHook();
@@ -43,17 +44,28 @@ function parseHtml(parser: DOMParser, html: string): HTMLDocument {
   return parser.parseFromString(html, "text/html");
 }
 
-const activeUsers = new Set<number>();
+async function getSet() {
+  const res = await kv.get<number[]>(["users"]);
+  return new Set(res.value ?? []);
+}
+
+async function addToSet(value: number) {
+  const currentSet = await getSet();
+  currentSet.add(value);
+  await kv.set(["users"], Array.from(currentSet));
+}
 
 // Create the cron job once when the application starts (call this in main())
-function startNotificationCron() {
+async function startNotificationCron() {
   Deno.cron("Send status", "*/10 * * * *", async () => {
-    console.log("Cron job running, active users:", activeUsers.size);
+    const activeUsers = await getSet();
 
-    if (activeUsers.size === 0) {
+    if (!activeUsers.size) {
       console.log("No active users, skipping cron execution");
       return;
     }
+
+    console.log("Cron job running, active users:", activeUsers.size);
 
     for (const chatId of activeUsers) {
       try {
@@ -102,6 +114,7 @@ async function handleUpdate(update: TelegramBot.Update) {
   } else if (update.callback_query) {
     const callbackQuery = update.callback_query;
     const chatId = callbackQuery.message?.chat.id;
+    const activeUsers = await getSet();
 
     if (chatId && callbackQuery.data === "main") {
       if (activeUsers.has(chatId)) {
@@ -111,7 +124,7 @@ async function handleUpdate(update: TelegramBot.Update) {
         );
       } else {
         // Add user to active users set
-        activeUsers.add(chatId);
+        await addToSet(chatId);
         console.log(`User ${chatId} subscribed to notifications`);
 
         bot.sendMessage(
@@ -183,7 +196,7 @@ async function getStatus() {
 }
 
 async function main() {
-  startNotificationCron();
+  await startNotificationCron();
   if (IN_DEV) {
     let offset = 0;
     console.debug("Bot", "Starting bot in development mode using getUpdates");
