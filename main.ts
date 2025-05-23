@@ -43,33 +43,35 @@ function parseHtml(parser: DOMParser, html: string): HTMLDocument {
   return parser.parseFromString(html, "text/html");
 }
 
-function getParentElement(elements: NodeList, keyword: string): Node | null {
-  let parentElement: Node | null = null;
-  elements.forEach((element) => {
-    const childNodes = element.childNodes;
-    childNodes.forEach((td) => {
-      const textContent = td.textContent || "";
-      if (!textContent || !textContent.includes(keyword)) return;
-      parentElement = td.parentNode;
-    });
-  });
-  return parentElement;
-}
+const activeUsers = new Set<number>();
 
-function getEachChildElementText(element: Node | null) {
-  if (!element) return null;
-  const childNodes = element.childNodes;
-  const textArray: string[] = [];
-  childNodes.forEach((child) => {
-    if (child.nodeType === Node.ELEMENT_NODE) {
-      const childElement = child as Element;
-      const childText = childElement.textContent || "";
-      if (childText) {
-        textArray.push(childText.trim());
+// Create the cron job once when the application starts (call this in main())
+function startNotificationCron() {
+  Deno.cron("Send status", "*/10 * * * *", async () => {
+    console.log("Cron job running, active users:", activeUsers.size);
+
+    if (activeUsers.size === 0) {
+      console.log("No active users, skipping cron execution");
+      return;
+    }
+
+    for (const chatId of activeUsers) {
+      try {
+        bot.sendMessage(chatId, "Bot corriendo sin problemas");
+        const { lastDate, newDate } = await getStatus();
+        if (newDate.includes("confirmar")) continue;
+
+        bot.sendMessage(
+          chatId,
+          `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
+        );
+      } catch (error) {
+        console.error(`Error sending message to ${chatId}:`, error);
+        // Remove user if chat is not accessible
+        activeUsers.delete(chatId);
       }
     }
   });
-  return textArray;
 }
 
 async function handleUpdate(update: TelegramBot.Update) {
@@ -100,24 +102,69 @@ async function handleUpdate(update: TelegramBot.Update) {
   } else if (update.callback_query) {
     const callbackQuery = update.callback_query;
     const chatId = callbackQuery.message?.chat.id;
+
     if (chatId && callbackQuery.data === "main") {
-      bot.sendMessage(
-        chatId,
-        `Se notificará cuando haya un nuevo turno. ${chatId}`,
-      );
-      // Using Deno.cron send a message each 30 minutes
-      Deno.cron("Send status", "*/10 * * * *", async () => {
-        bot.sendMessage(chatId, "Bot corriendo sin problemas");
-        const { lastDate, newDate } = await getStatus();
-        if (newDate.includes("confirmar")) return;
+      if (activeUsers.has(chatId)) {
         bot.sendMessage(
           chatId,
-          `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
+          "Ya estás recibiendo notificaciones.",
         );
-      });
+      } else {
+        // Add user to active users set
+        activeUsers.add(chatId);
+        console.log(`User ${chatId} subscribed to notifications`);
+
+        bot.sendMessage(
+          chatId,
+          `Se notificará cuando haya un nuevo turno. Chat ID: ${chatId}`,
+        );
+      }
+    } else if (chatId && callbackQuery.data === "stop") {
+      if (activeUsers.has(chatId)) {
+        activeUsers.delete(chatId);
+        console.log(`User ${chatId} unsubscribed from notifications`);
+        bot.sendMessage(
+          chatId,
+          "Has dejado de recibir notificaciones.",
+        );
+      } else {
+        bot.sendMessage(
+          chatId,
+          "No estás recibiendo notificaciones actualmente.",
+        );
+      }
     }
     bot.answerCallbackQuery(callbackQuery.id);
   }
+}
+
+function getParentElement(elements: NodeList, keyword: string): Node | null {
+  let parentElement: Node | null = null;
+  elements.forEach((element) => {
+    const childNodes = element.childNodes;
+    childNodes.forEach((td) => {
+      const textContent = td.textContent || "";
+      if (!textContent || !textContent.includes(keyword)) return;
+      parentElement = td.parentNode;
+    });
+  });
+  return parentElement;
+}
+
+function getEachChildElementText(element: Node | null) {
+  if (!element) return null;
+  const childNodes = element.childNodes;
+  const textArray: string[] = [];
+  childNodes.forEach((child) => {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const childElement = child as Element;
+      const childText = childElement.textContent || "";
+      if (childText) {
+        textArray.push(childText.trim());
+      }
+    }
+  });
+  return textArray;
 }
 
 async function getStatus() {
@@ -128,7 +175,6 @@ async function getStatus() {
   const keywordOnly = getParentElement(allTr, "Pasaportesrenova");
   const texts = getEachChildElementText(keywordOnly);
   const [title, lastDate, newDate] = texts || [];
-  console.log(title, lastDate, newDate);
   return {
     title,
     lastDate,
@@ -137,6 +183,7 @@ async function getStatus() {
 }
 
 async function main() {
+  startNotificationCron();
   if (IN_DEV) {
     let offset = 0;
     console.debug("Bot", "Starting bot in development mode using getUpdates");
