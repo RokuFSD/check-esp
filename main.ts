@@ -15,8 +15,6 @@ const WEBHOOK_SECRET_TOKEN = Deno.env.get("WEBHOOK_SECRET_TOKEN");
 const IN_DEV = Deno.env.get("DENO_ENV") === "development";
 const WEBHOOK_URL = "emilianorui-check-esp-2.deno.dev";
 
-const cachedChats: { [chatId: string]: boolean } = {};
-
 if (!TELEGRAM_TOKEN) {
   throw new Error("TELEGRAM_BOT_TOKEN is not set");
 }
@@ -103,25 +101,20 @@ async function handleUpdate(update: TelegramBot.Update) {
     const callbackQuery = update.callback_query;
     const chatId = callbackQuery.message?.chat.id;
     if (chatId && callbackQuery.data === "main") {
-      if (chatId in cachedChats) {
-        bot.sendMessage(chatId, `Devolviendo, ya esta registrado`);
-      } else {
-        cachedChats[chatId] = true;
+      bot.sendMessage(
+        chatId,
+        `Se notificará cuando haya un nuevo turno. ${chatId}`,
+      );
+      // Using Deno.cron send a message each 30 minutes
+      Deno.cron("Send status", "*/10 * * * *", async () => {
+        bot.sendMessage(chatId, "Bot corriendo sin problemas");
+        const { lastDate, newDate } = await getStatus();
+        if (newDate.includes("confirmar")) return;
         bot.sendMessage(
           chatId,
-          `Se notificará cuando haya un nuevo turno. ${chatId}`,
+          `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
         );
-        // Using Deno.cron send a message each 30 minutes
-        Deno.cron("Send status", "*/10 * * * *", async () => {
-          bot.sendMessage(chatId, "Bot corriendo sin problemas");
-          const { lastDate, newDate } = await getStatus();
-          if (newDate.includes("confirmar")) return;
-          bot.sendMessage(
-            chatId,
-            `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
-          );
-        });
-      }
+      });
     }
     bot.answerCallbackQuery(callbackQuery.id);
   }
