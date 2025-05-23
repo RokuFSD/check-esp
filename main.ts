@@ -105,25 +105,25 @@ async function handleUpdate(update: TelegramBot.Update) {
     if (chatId && callbackQuery.data === "main") {
       if (chatId in cachedChats) {
         bot.sendMessage(chatId, `Devolviendo, ya esta registrado`);
-        return;
-      }
-      cachedChats[chatId] = true;
-      bot.sendMessage(
-        chatId,
-        `Se notificará cuando haya un nuevo turno. ${chatId}`,
-      );
-      // Using Deno.cron send a message each 30 minutes
-      Deno.cron("Send status", "*/10 * * * *", async () => {
-        const { lastDate, newDate } = await getStatus();
-        if (newDate.includes("confirmar")) return;
+      } else {
+        cachedChats[chatId] = true;
         bot.sendMessage(
           chatId,
-          `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
+          `Se notificará cuando haya un nuevo turno. ${chatId}`,
         );
-      });
-      Deno.cron("Salud del bot", "*/59 * * * *", () => {
-        bot.sendMessage(chatId, "Bot corriendo sin problemas");
-      });
+        // Using Deno.cron send a message each 30 minutes
+        Deno.cron("Send status", "*/10 * * * *", async () => {
+          const { lastDate, newDate } = await getStatus();
+          if (newDate.includes("confirmar")) return;
+          bot.sendMessage(
+            chatId,
+            `SE PUEDE SACAR TURNO\nLast Date: ${lastDate}\nNew Date: ${newDate}`,
+          );
+        });
+        Deno.cron("Salud del bot", "*/59 * * * *", () => {
+          bot.sendMessage(chatId, "Bot corriendo sin problemas");
+        });
+      }
     }
     bot.answerCallbackQuery(callbackQuery.id);
   }
